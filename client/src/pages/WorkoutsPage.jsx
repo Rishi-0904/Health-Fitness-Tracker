@@ -35,7 +35,12 @@ export function WorkoutsPage() {
     try {
       setLoading(true);
       const response = await apiClient.get('/workouts?limit=50');
-      setWorkouts(response.data);
+      const workoutsPayload = Array.isArray(response.data?.workouts)
+        ? response.data.workouts
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
+      setWorkouts(workoutsPayload);
     } catch (error) {
       console.error('Failed to fetch workouts:', error);
     } finally {
