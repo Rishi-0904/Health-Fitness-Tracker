@@ -26,7 +26,12 @@ export function SleepPage() {
     try {
       setLoading(true);
       const response = await apiClient.get('/sleep?limit=30');
-      setSleepSessions(response.data);
+      const sessionsPayload = Array.isArray(response.data?.sessions)
+        ? response.data.sessions
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
+      setSleepSessions(sessionsPayload);
     } catch (error) {
       console.error('Failed to fetch sleep sessions:', error);
     } finally {
@@ -118,7 +123,9 @@ export function SleepPage() {
   };
 
   // Calculate sleep statistics
-  const sleepStats = sleepSessions.reduce((acc, session) => {
+  const sessionsList = Array.isArray(sleepSessions) ? sleepSessions : [];
+
+  const sleepStats = sessionsList.reduce((acc, session) => {
     const duration = calculateDuration(session.startTime, session.endTime);
     acc.totalSessions++;
     acc.totalHours += duration;
@@ -139,7 +146,7 @@ export function SleepPage() {
   const averageInterruptions = sleepStats.totalSessions > 0 ? sleepStats.totalInterruptions / sleepStats.totalSessions : 0;
 
   // Prepare chart data
-  const chartData = sleepSessions
+  const chartData = sessionsList
     .slice()
     .reverse()
     .slice(0, 14) // Last 14 days
