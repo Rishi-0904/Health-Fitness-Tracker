@@ -304,16 +304,19 @@ body::before {
 }
 
 .stat-card {
-  background: white;
+  background: linear-gradient(200deg, rgba(2,6,23,0.9) 0%, rgba(15,23,42,0.7) 60%, rgba(2,6,23,0.9) 100%), radial-gradient(circle at top left, rgba(34,211,238,0.18), transparent 55%);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--gray-200);
-  transition: transform 0.2s ease;
+  box-shadow: 0 30px 80px -42px rgba(2,6,23,0.9);
+  border: 1px solid rgba(34,211,238,0.18);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  backdrop-filter: blur(20px);
+  color: rgba(248,250,252,0.9);
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-8px);
+  box-shadow: 0 36px 90px -45px rgba(249,115,22,0.65);
 }
 
 .stat-header {
@@ -330,7 +333,7 @@ body::before {
 .stat-header h3 {
   font-size: var(--font-size-lg);
   font-weight: 600;
-  color: var(--gray-800);
+  color: rgba(248,250,252,0.9);
 }
 
 .stat-value {
