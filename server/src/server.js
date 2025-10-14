@@ -10,6 +10,8 @@ import { workoutsRouter } from "./routes/workouts.js";
 import { mealsRouter } from "./routes/meals.js";
 import { sleepRouter } from "./routes/sleep.js";
 import { wearableRouter } from "./routes/wearables.js";
+import { analyticsRouter } from "./routes/analytics.js";
+import { goalsRouter } from "./routes/goals.js";
 
 export const app = express();
 
@@ -33,6 +35,8 @@ app.use("/workouts", workoutsRouter);
 app.use("/meals", mealsRouter);
 app.use("/sleep", sleepRouter);
 app.use("/wearables", wearableRouter);
+app.use("/analytics", analyticsRouter);
+app.use("/goals", goalsRouter);
 
 app.use((err, _req, res, _next) => {
   console.error("Unhandled error", err);

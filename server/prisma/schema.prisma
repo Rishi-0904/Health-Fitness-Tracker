@@ -20,6 +20,7 @@ model User {
   meals        MealLog[]
   sleep        SleepSession[]
   wearableSync WearableSync[]
+  goals        Goal[]
 }
 
 model DailyMetric {
@@ -83,4 +84,20 @@ model WearableSync {
   syncedAt      DateTime @default(now())
   status        String   @default("processed")
   errorMessage  String?
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  type        String   // 'weight_loss', 'muscle_gain', 'endurance', 'strength', 'custom'
+  title       String
+  description String?
+  targetValue Float
+  currentValue Float   @default(0)
+  unit        String   // 'lbs', 'kg', 'minutes', 'reps', etc.
+  targetDate  DateTime?
+  status      String   @default("active") // 'active', 'completed', 'paused'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
