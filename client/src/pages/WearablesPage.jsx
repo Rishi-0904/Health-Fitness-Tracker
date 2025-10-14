@@ -28,16 +28,21 @@ export function WearablesPage() {
     try {
       setLoading(true);
       const response = await apiClient.get('/wearables');
-      setSyncHistory(response.data);
+      const syncsPayload = Array.isArray(response.data?.syncs)
+        ? response.data.syncs
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
+      setSyncHistory(syncsPayload);
       
       // Group by provider to show connected devices
-      const devices = response.data.reduce((acc, sync) => {
+      const devices = syncsPayload.reduce((acc, sync) => {
         if (!acc.find(d => d.provider === sync.provider)) {
           acc.push({
             provider: sync.provider,
             lastSync: sync.syncedAt,
             status: sync.status,
-            totalSyncs: response.data.filter(s => s.provider === sync.provider).length
+            totalSyncs: syncsPayload.filter(s => s.provider === sync.provider).length
           });
         }
         return acc;
@@ -46,6 +51,8 @@ export function WearablesPage() {
       setConnectedDevices(devices);
     } catch (error) {
       console.error('Failed to fetch wearable data:', error);
+      setSyncHistory([]);
+      setConnectedDevices([]);
     } finally {
       setLoading(false);
     }
@@ -155,7 +162,9 @@ export function WearablesPage() {
   };
 
   // Prepare chart data for sync history
-  const syncChartData = syncHistory
+  const historyList = Array.isArray(syncHistory) ? syncHistory : [];
+
+  const syncChartData = historyList
     .slice()
     .reverse()
     .slice(0, 10)
@@ -166,7 +175,7 @@ export function WearablesPage() {
       dataPoints: Object.keys(sync.payload).length
     }));
 
-  const providerStats = syncHistory.reduce((acc, sync) => {
+  const providerStats = historyList.reduce((acc, sync) => {
     acc[sync.provider] = (acc[sync.provider] || 0) + 1;
     return acc;
   }, {});
@@ -224,21 +233,21 @@ export function WearablesPage() {
           <div className="stat-card">
             <span className="stat-icon">🔄</span>
             <div className="stat-content">
-              <h3>{syncHistory.length}</h3>
+              <h3>{historyList.length}</h3>
               <p>Total Syncs</p>
             </div>
           </div>
           <div className="stat-card">
             <span className="stat-icon">✅</span>
             <div className="stat-content">
-              <h3>{syncHistory.filter(s => s.status === 'processed').length}</h3>
+              <h3>{historyList.filter(s => s.status === 'processed').length}</h3>
               <p>Successful Syncs</p>
             </div>
           </div>
           <div className="stat-card">
             <span className="stat-icon">📊</span>
             <div className="stat-content">
-              <h3>{syncHistory.length > 0 ? new Date(syncHistory[0].syncedAt).toLocaleDateString() : 'Never'}</h3>
+              <h3>{historyList.length > 0 ? new Date(historyList[0].syncedAt).toLocaleDateString() : 'Never'}</h3>
               <p>Last Sync</p>
             </div>
           </div>
@@ -412,7 +421,7 @@ export function WearablesPage() {
 
       {viewMode === 'sync' && (
         <div className="sync-history-section">
-          {syncHistory.length > 0 ? (
+          {historyList.length > 0 ? (
             <>
               <div className="charts-grid">
                 <div className="chart-card">
@@ -445,7 +454,7 @@ export function WearablesPage() {
               <div className="sync-history-list">
                 <h3>Recent Sync History</h3>
                 <div className="sync-items">
-                  {syncHistory.slice(0, 20).map((sync) => {
+                  {historyList.slice(0, 20).map((sync) => {
                     const providerInfo = getProviderInfo(sync.provider);
                     return (
                       <div key={sync.id} className="sync-item">
