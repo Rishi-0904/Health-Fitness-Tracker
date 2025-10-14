@@ -46,7 +46,12 @@ export function MealsPage() {
     try {
       setLoading(true);
       const response = await apiClient.get('/meals?limit=100');
-      setMeals(response.data);
+      const mealsPayload = Array.isArray(response.data?.meals)
+        ? response.data.meals
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
+      setMeals(mealsPayload);
     } catch (error) {
       console.error('Failed to fetch meals:', error);
     } finally {
@@ -143,7 +148,9 @@ export function MealsPage() {
   };
 
   // Calculate daily totals for selected date
-  const dailyMeals = meals.filter(meal => 
+  const mealsList = Array.isArray(meals) ? meals : [];
+
+  const dailyMeals = mealsList.filter(meal => 
     meal.date.startsWith(selectedDate)
   );
 
@@ -178,7 +185,7 @@ export function MealsPage() {
     const date = new Date();
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
-    const dayMeals = meals.filter(meal => meal.date.startsWith(dateStr));
+    const dayMeals = mealsList.filter(meal => meal.date.startsWith(dateStr));
     const dayCalories = dayMeals.reduce((sum, meal) => sum + meal.calories, 0);
     
     weeklyData.push({
@@ -493,7 +500,7 @@ export function MealsPage() {
         <div className="daily-view-section">
           <div className="daily-meals">
             {MEAL_TYPES.map(mealType => {
-              const typeMeals = dailyMeals.filter(meal => meal.mealType === mealType);
+              const typeMeals = Array.isArray(dailyMeals) ? dailyMeals.filter(meal => meal.mealType === mealType) : [];
               const typeCalories = typeMeals.reduce((sum, meal) => sum + meal.calories, 0);
               
               return (
