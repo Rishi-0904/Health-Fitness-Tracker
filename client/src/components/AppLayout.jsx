@@ -3,13 +3,13 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const navItems = [
-  { path: "/", label: "Dashboard", exact: true },
-  { path: "/metrics", label: "Daily Metrics" },
-  { path: "/workouts", label: "Workouts" },
-  { path: "/meals", label: "Meals" },
-  { path: "/sleep", label: "Sleep" },
-  { path: "/goals", label: "Goals" },
-  { path: "/wearables", label: "Wearables" }
+  { path: "/", label: "Dashboard", icon: "🏠", exact: true },
+  { path: "/metrics", label: "Daily Metrics", icon: "📈" },
+  { path: "/workouts", label: "Workouts", icon: "💪" },
+  { path: "/meals", label: "Meals", icon: "🍽️" },
+  { path: "/sleep", label: "Sleep", icon: "🌙" },
+  { path: "/goals", label: "Goals", icon: "🎯" },
+  { path: "/wearables", label: "Wearables", icon: "⌚" }
 ];
 
 export function AppLayout() {
@@ -38,7 +38,8 @@ export function AppLayout() {
                 `nav-link${isActive ? " nav-link-active" : ""}`
               }
             >
-              {item.label}
+              <span className="nav-link-icon" aria-hidden="true">{item.icon}</span>
+              <span className="nav-link-label">{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -51,7 +52,9 @@ export function AppLayout() {
             <span className="header-subtitle">Track. Improve. Thrive.</span>
           </div>
           <div className="header-actions">
-            <span className="header-email">{user?.email}</span>
+            <div className="header-badge">
+              <span className="header-email">{user?.email}</span>
+            </div>
             <button className="button button-secondary" onClick={handleLogout}>
               Log out
             </button>
