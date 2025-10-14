@@ -8,6 +8,7 @@ import { WorkoutsPage } from "./pages/WorkoutsPage.jsx";
 import { MealsPage } from "./pages/MealsPage.jsx";
 import { SleepPage } from "./pages/SleepPage.jsx";
 import { WearablesPage } from "./pages/WearablesPage.jsx";
+import { GoalsPage } from "./pages/GoalsPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 import { RegisterPage } from "./pages/RegisterPage.jsx";
 
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="meals" element={<MealsPage />} />
         <Route path="sleep" element={<SleepPage />} />
         <Route path="wearables" element={<WearablesPage />} />
+        <Route path="goals" element={<GoalsPage />} />
       </Route>
 
       <Route path="/login" element={<LoginPage />} />

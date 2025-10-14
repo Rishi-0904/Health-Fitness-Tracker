@@ -32,7 +32,13 @@ wearableRouter.get(
       take: limit
     });
 
-    res.json({ syncs: logs });
+    // Parse JSON payload strings back to objects
+    const parsedLogs = logs.map(log => ({
+      ...log,
+      payload: JSON.parse(log.payload)
+    }));
+
+    res.json({ syncs: parsedLogs });
   })
 );
 
@@ -46,7 +52,7 @@ wearableRouter.post(
       data: {
         userId,
         provider: payload.provider,
-        payload: payload.payload,
+        payload: JSON.stringify(payload.payload), // Convert to string for SQLite
         status: payload.status,
         errorMessage: payload.errorMessage ?? null
       }
@@ -69,11 +75,11 @@ wearableRouter.post(
       workoutsMinutes: Math.round(20 + Math.random() * 40)
     };
 
-    const syncLog = await prisma.wearableSync.create({
+    const sync = await prisma.wearableSync.create({
       data: {
-        userId,
+        userId: req.user.id,
         provider: "simulator",
-        payload: fakePayload,
+        payload: JSON.stringify(fakePayload), // Convert to string for SQLite
         status: "processed"
       }
     });
@@ -97,6 +103,6 @@ wearableRouter.post(
       }
     });
 
-    res.status(201).json({ sync: syncLog, metric });
+    res.status(201).json({ sync, metric });
   })
 );

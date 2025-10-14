@@ -27,21 +27,33 @@ export function DashboardPage() {
       
       // Fetch recent metrics
       const metricsRes = await apiClient.get('/metrics?limit=7');
-      setMetrics(metricsRes.data);
+      const metricsPayload = Array.isArray(metricsRes.data?.metrics)
+        ? metricsRes.data.metrics
+        : Array.isArray(metricsRes.data)
+          ? metricsRes.data
+          : [];
+      setMetrics(metricsPayload);
       
       // Fetch recent workouts
       const workoutsRes = await apiClient.get('/workouts?limit=5');
-      setRecentWorkouts(workoutsRes.data);
+      const workoutsPayload = Array.isArray(workoutsRes.data?.workouts)
+        ? workoutsRes.data.workouts
+        : Array.isArray(workoutsRes.data)
+          ? workoutsRes.data
+          : [];
+      setRecentWorkouts(workoutsPayload);
       
       // Calculate today's stats
       const today = new Date().toISOString().split('T')[0];
-      const todayMetric = metricsRes.data.find(m => m.date.startsWith(today));
+      const todayMetric = metricsPayload.find(m =>
+        typeof m.date === 'string' ? m.date.startsWith(today) : false
+      );
       if (todayMetric) {
         setTodayStats(todayMetric);
       }
       
       // Process weekly progress
-      const weeklyData = metricsRes.data.map(metric => ({
+      const weeklyData = metricsPayload.map(metric => ({
         date: new Date(metric.date).toLocaleDateString('en-US', { weekday: 'short' }),
         calories: metric.calories,
         steps: metric.steps,
@@ -96,7 +108,7 @@ export function DashboardPage() {
     }
   ];
 
-  const workoutTypeData = recentWorkouts.reduce((acc, workout) => {
+  const workoutTypeData = (Array.isArray(recentWorkouts) ? recentWorkouts : []).reduce((acc, workout) => {
     acc[workout.type] = (acc[workout.type] || 0) + 1;
     return acc;
   }, {});

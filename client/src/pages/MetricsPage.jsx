@@ -26,11 +26,18 @@ export function MetricsPage() {
     try {
       setLoading(true);
       const response = await apiClient.get('/metrics?limit=30');
-      setMetrics(response.data);
+      const metricsPayload = Array.isArray(response.data?.metrics)
+        ? response.data.metrics
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
+      setMetrics(metricsPayload);
       
       // Check if today's metric exists
       const today = new Date().toISOString().split('T')[0];
-      const todayMetric = response.data.find(m => m.date.startsWith(today));
+      const todayMetric = metricsPayload.find(m =>
+        typeof m.date === 'string' ? m.date.startsWith(today) : false
+      );
       if (todayMetric) {
         setCurrentMetric({
           ...todayMetric,

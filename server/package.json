@@ -10,7 +10,7 @@
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "^5.16.1",
+    "@prisma/client": "^6.17.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dayjs": "^1.11.11",
@@ -23,6 +23,6 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0",
-    "prisma": "^5.16.1"
+    "prisma": "^6.17.1"
   }
 }
