@@ -7,6 +7,18 @@ import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
+function getRecoveryRecommendation(status) {
+  if (status === "optimal") {
+    return "You're well recovered. Consider scheduling a quality training session today.";
+  }
+
+  if (status === "monitor") {
+    return "Recovery is decent but not perfect. Keep hydration up and favor moderate intensity today.";
+  }
+
+  return "Recovery is low. Prioritize rest, mobility, and light activity before your next hard workout.";
+}
+
 dayjs.extend(duration);
 
 const sleepQuerySchema = z.object({
@@ -85,6 +97,113 @@ sleepRouter.get(
   })
 );
 
+sleepRouter.get(
+  "/recovery",
+  asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    const latestSession = await prisma.sleepSession.findFirst({
+      where: { userId },
+      orderBy: { startTime: "desc" }
+    });
+
+    if (!latestSession) {
+      return res.json({
+        score: null,
+        status: "no-data",
+        message: "Log a sleep session to unlock recovery insights."
+      });
+    }
+
+    const sessionStart = dayjs(latestSession.startTime);
+    const sessionEnd = dayjs(latestSession.endTime);
+    const sleepMinutes = Math.max(sessionEnd.diff(sessionStart, "minute"), 0);
+    const sleepHours = Number((sleepMinutes / 60).toFixed(2));
+
+    const qualityScoreMap = {
+      excellent: 30,
+      good: 24,
+      fair: 16,
+      poor: 8,
+      unknown: 16
+    };
+
+    const qualityKey = latestSession.quality ?? "unknown";
+    const qualityScore = qualityScoreMap[qualityKey] ?? qualityScoreMap.unknown;
+    const durationScore = Math.min((sleepHours / 8) * 50, 50);
+
+    const previousDayStart = sessionStart.subtract(1, "day").startOf("day");
+    const previousDayEnd = previousDayStart.endOf("day");
+
+    const workouts = await prisma.workoutLog.findMany({
+      where: {
+        userId,
+        date: {
+          gte: previousDayStart.toDate(),
+          lte: previousDayEnd.toDate()
+        }
+      }
+    });
+
+    const intensityWeights = { low: 0.8, moderate: 1, high: 1.2 };
+    let weightedLoad = 0;
+    const intensityBreakdown = { low: 0, moderate: 0, high: 0 };
+
+    workouts.forEach((workout) => {
+      const intensity = workout.intensity ?? "moderate";
+      const minutes = workout.durationMin ?? 0;
+
+      if (intensityBreakdown[intensity] !== undefined) {
+        intensityBreakdown[intensity] += minutes;
+      }
+
+      weightedLoad += minutes * (intensityWeights[intensity] ?? 1);
+    });
+
+    const totalWorkoutMinutes = workouts.reduce(
+      (acc, workout) => acc + (workout.durationMin ?? 0),
+      0
+    );
+
+    const loadPenalty = Math.min(weightedLoad / 90, 1) * 20;
+
+    const rawScore = Math.round(
+      Math.max(
+        Math.min(durationScore + qualityScore + (20 - loadPenalty), 100),
+        0
+      )
+    );
+
+    const status = rawScore >= 80 ? "optimal" : rawScore >= 60 ? "monitor" : "fatigued";
+
+    const recommendation = getRecoveryRecommendation(status, {
+      sleepHours,
+      quality: qualityKey,
+      totalWorkoutMinutes,
+      loadPenalty
+    });
+
+    res.json({
+      score: rawScore,
+      status,
+      sleep: {
+        durationHours: sleepHours,
+        durationMinutes: sleepMinutes,
+        quality: qualityKey,
+        startTime: latestSession.startTime,
+        endTime: latestSession.endTime,
+        interruptions: latestSession.interruptions
+      },
+      workload: {
+        date: previousDayStart.format("YYYY-MM-DD"),
+        totalMinutes: totalWorkoutMinutes,
+        weightedLoad: Number(weightedLoad.toFixed(1)),
+        intensityBreakdown
+      },
+      recommendation
+    });
+  })
+);
 sleepRouter.post(
   "/",
   asyncHandler(async (req, res) => {

@@ -16,6 +16,7 @@ export function DashboardPage() {
   });
   const [weeklyProgress, setWeeklyProgress] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [recovery, setRecovery] = useState({ status: 'loading' });
 
   useEffect(() => {
     fetchDashboardData();
@@ -62,11 +63,134 @@ export function DashboardPage() {
       }));
       setWeeklyProgress(weeklyData.reverse());
       
+      const recoveryRes = await apiClient.get('/sleep/recovery');
+      setRecovery(recoveryRes.data ?? { status: 'no-data' });
+
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      setRecovery({ status: 'error' });
     } finally {
       setLoading(false);
     }
+  };
+
+  const recoveryCard = () => {
+    if (!recovery || recovery.status === 'loading') {
+      return (
+        <div className="recovery-card">
+          <div className="recovery-header">
+            <span className="recovery-icon">🛌</span>
+            <div>
+              <h3>Sleep Recovery</h3>
+              <p>Analyzing your latest night...</p>
+            </div>
+          </div>
+          <div className="recovery-loader">
+            <div className="loading-spinner"></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (recovery.status === 'no-data') {
+      return (
+        <div className="recovery-card">
+          <div className="recovery-header">
+            <span className="recovery-icon">🛌</span>
+            <div>
+              <h3>Sleep Recovery</h3>
+              <p>Log a sleep session to unlock insights.</p>
+            </div>
+          </div>
+          <div className="recovery-empty">
+            <button className="button button-secondary" onClick={() => window.location.href = '/sleep'}>
+              Log Sleep Now
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (recovery.status === 'error') {
+      return (
+        <div className="recovery-card">
+          <div className="recovery-header">
+            <span className="recovery-icon">🛌</span>
+            <div>
+              <h3>Sleep Recovery</h3>
+              <p>Unable to load recovery insights.</p>
+            </div>
+          </div>
+          <div className="recovery-empty">
+            <button className="button button-secondary" onClick={fetchDashboardData}>
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const statusLabels = {
+      optimal: 'Optimal Recovery',
+      monitor: 'Monitor & Maintain',
+      fatigued: 'Fatigue Warning'
+    };
+
+    const statusEmojis = {
+      optimal: '⚡',
+      monitor: '🌤️',
+      fatigued: '🧘'
+    };
+
+    const statusColor = {
+      optimal: 'var(--success-color)',
+      monitor: 'var(--warning-color)',
+      fatigued: 'var(--danger-color)'
+    };
+
+    return (
+      <div className={`recovery-card recovery-${recovery.status}`}>
+        <div className="recovery-header">
+          <span className="recovery-icon">🛌</span>
+          <div>
+            <h3>Sleep Recovery</h3>
+            <p>Based on last night vs. recent workload</p>
+          </div>
+        </div>
+        <div className="recovery-score">
+          <div className="recovery-ring" style={{ borderColor: statusColor[recovery.status] }}>
+            <span>{recovery.score}</span>
+          </div>
+          <div>
+            <p className="recovery-status">
+              <span role="img" aria-hidden="true">{statusEmojis[recovery.status]}</span>
+              {statusLabels[recovery.status]}
+            </p>
+            <p className="recovery-recommendation">{recovery.recommendation}</p>
+          </div>
+        </div>
+        <div className="recovery-breakdown">
+          <div>
+            <h4>Sleep</h4>
+            <p>{recovery.sleep?.durationHours ?? 0} hrs • {recovery.sleep?.quality ?? 'unknown'}</p>
+            <p>{recovery.sleep?.interruptions ?? 0} interruptions</p>
+          </div>
+          <div>
+            <h4>Workload</h4>
+            <p>{recovery.workload?.totalMinutes ?? 0} min previous day</p>
+            <p>{recovery.workload?.weightedLoad ?? 0} load score</p>
+          </div>
+        </div>
+        <div className="recovery-actions">
+          <button className="button button-secondary" onClick={() => window.location.href = '/sleep'}>
+            View Sleep Log
+          </button>
+          <button className="button button-secondary" onClick={() => window.location.href = '/workouts'}>
+            Adjust Training
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const quickStats = [
@@ -133,35 +257,37 @@ export function DashboardPage() {
         <h1>Dashboard</h1>
         <p>Your health and fitness overview</p>
       </div>
-
-      {/* Quick Stats Cards */}
-      <div className="stats-grid">
-        {quickStats.map((stat, index) => (
-          <div key={index} className="stat-card">
-            <div className="stat-header">
-              <span className="stat-icon">{stat.icon}</span>
-              <h3>{stat.title}</h3>
-            </div>
-            <div className="stat-value">
-              <span className="value">{stat.value}</span>
-              <span className="unit">{stat.unit}</span>
-            </div>
-            <div className="stat-progress">
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{ 
-                    width: `${Math.min(stat.progress, 100)}%`,
-                    backgroundColor: stat.color 
-                  }}
-                ></div>
+      {/* Recovery + Quick Stats */}
+      <div className="recovery-stats-grid">
+        {recoveryCard()}
+        <div className="stats-grid">
+          {quickStats.map((stat, index) => (
+            <div key={index} className="stat-card">
+              <div className="stat-header">
+                <span className="stat-icon">{stat.icon}</span>
+                <h3>{stat.title}</h3>
               </div>
-              <span className="progress-text">
-                {Math.round(stat.progress)}% of {stat.target} {stat.unit}
-              </span>
+              <div className="stat-value">
+                <span className="value">{stat.value}</span>
+                <span className="unit">{stat.unit}</span>
+              </div>
+              <div className="stat-progress">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{ 
+                      width: `${Math.min(stat.progress, 100)}%`,
+                      backgroundColor: stat.color 
+                    }}
+                  ></div>
+                </div>
+                <span className="progress-text">
+                  {Math.round(stat.progress)}% of {stat.target} {stat.unit}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Charts Section */}
