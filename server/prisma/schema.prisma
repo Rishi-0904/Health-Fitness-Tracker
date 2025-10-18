@@ -21,6 +21,7 @@ model User {
   sleep        SleepSession[]
   wearableSync WearableSync[]
   goals        Goal[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model DailyMetric {
@@ -100,4 +101,14 @@ model Goal {
   status      String   @default("active") // 'active', 'completed', 'paused'
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
