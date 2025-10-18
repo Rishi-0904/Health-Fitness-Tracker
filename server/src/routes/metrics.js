@@ -22,6 +22,11 @@ const upsertMetricSchema = z.object({
   notes: z.string().max(500).optional()
 });
 
+const updateMetricSchema = upsertMetricSchema.partial().refine(
+  (payload) => Object.keys(payload).length > 0,
+  { message: "At least one field must be provided" }
+);
+
 function parseDate(value, fallback) {
   if (!value) return fallback;
   const d = dayjs(value);
@@ -81,6 +86,67 @@ dailyMetricsRouter.get(
     });
 
     res.json({ latest, averages: totals._avg });
+  })
+);
+
+dailyMetricsRouter.put(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const payload = updateMetricSchema.parse(req.body);
+    const userId = req.user.id;
+
+    const existing = await prisma.dailyMetric.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Metric not found" });
+    }
+
+    const data = {};
+
+    if (payload.date !== undefined) {
+      const date = dayjs(payload.date).startOf("day");
+      if (!date.isValid()) {
+        return res.status(400).json({ message: "Invalid date" });
+      }
+      data.date = date.toDate();
+    }
+
+    if (payload.calories !== undefined) data.calories = payload.calories;
+    if (payload.steps !== undefined) data.steps = payload.steps;
+    if (payload.sleepHours !== undefined) data.sleepHours = payload.sleepHours;
+    if (payload.workoutsMinutes !== undefined) data.workoutsMinutes = payload.workoutsMinutes;
+    if (payload.waterIntakeOz !== undefined) data.waterIntakeOz = payload.waterIntakeOz;
+    if (payload.notes !== undefined) data.notes = payload.notes;
+
+    const metric = await prisma.dailyMetric.update({
+      where: { id },
+      data
+    });
+
+    res.json({ metric });
+  })
+);
+
+dailyMetricsRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const existing = await prisma.dailyMetric.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Metric not found" });
+    }
+
+    await prisma.dailyMetric.delete({ where: { id } });
+
+    res.status(204).end();
   })
 );
 

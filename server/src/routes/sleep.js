@@ -35,6 +35,11 @@ const sleepSessionSchema = z.object({
   notes: z.string().max(500).optional()
 });
 
+const updateSleepSchema = sleepSessionSchema.partial().refine(
+  (payload) => Object.keys(payload).length > 0,
+  { message: "At least one field must be provided" }
+);
+
 export const sleepRouter = Router();
 
 sleepRouter.use(requireAuth);
@@ -229,5 +234,67 @@ sleepRouter.post(
     });
 
     res.status(201).json({ session });
+  })
+);
+
+sleepRouter.put(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const payload = updateSleepSchema.parse(req.body);
+    const userId = req.user.id;
+
+    const existing = await prisma.sleepSession.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Sleep session not found" });
+    }
+
+    const data = {};
+
+    if (payload.startTime !== undefined || payload.endTime !== undefined) {
+      const startTime = payload.startTime ? dayjs(payload.startTime) : dayjs(existing.startTime);
+      const endTime = payload.endTime ? dayjs(payload.endTime) : dayjs(existing.endTime);
+
+      if (!startTime.isValid() || !endTime.isValid() || endTime.isBefore(startTime)) {
+        return res.status(400).json({ message: "Invalid sleep session time range" });
+      }
+
+      data.startTime = startTime.toDate();
+      data.endTime = endTime.toDate();
+    }
+
+    if (payload.quality !== undefined) data.quality = payload.quality;
+    if (payload.interruptions !== undefined) data.interruptions = payload.interruptions;
+    if (payload.notes !== undefined) data.notes = payload.notes;
+
+    const session = await prisma.sleepSession.update({
+      where: { id },
+      data
+    });
+
+    res.json({ session });
+  })
+);
+
+sleepRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const existing = await prisma.sleepSession.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Sleep session not found" });
+    }
+
+    await prisma.sleepSession.delete({ where: { id } });
+
+    res.status(204).end();
   })
 );

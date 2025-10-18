@@ -21,6 +21,11 @@ const createWorkoutSchema = z.object({
   notes: z.string().max(500).optional()
 });
 
+const updateWorkoutSchema = createWorkoutSchema.partial().refine(
+  (payload) => Object.keys(payload).length > 0,
+  { message: "At least one field must be provided" }
+);
+
 export const workoutsRouter = Router();
 
 workoutsRouter.use(requireAuth);
@@ -74,5 +79,65 @@ workoutsRouter.post(
     });
 
     res.status(201).json({ workout });
+  })
+);
+
+workoutsRouter.put(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const payload = updateWorkoutSchema.parse(req.body);
+    const userId = req.user.id;
+
+    const existing = await prisma.workoutLog.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+
+    const data = {};
+
+    if (payload.date !== undefined) {
+      const date = dayjs(payload.date);
+      if (!date.isValid()) {
+        return res.status(400).json({ message: "Invalid workout date" });
+      }
+      data.date = date.toDate();
+    }
+
+    if (payload.type !== undefined) data.type = payload.type;
+    if (payload.intensity !== undefined) data.intensity = payload.intensity;
+    if (payload.durationMin !== undefined) data.durationMin = payload.durationMin;
+    if (payload.caloriesBurned !== undefined) data.caloriesBurned = payload.caloriesBurned;
+    if (payload.notes !== undefined) data.notes = payload.notes;
+
+    const workout = await prisma.workoutLog.update({
+      where: { id },
+      data
+    });
+
+    res.json({ workout });
+  })
+);
+
+workoutsRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const existing = await prisma.workoutLog.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Workout not found" });
+    }
+
+    await prisma.workoutLog.delete({ where: { id } });
+
+    res.status(204).end();
   })
 );

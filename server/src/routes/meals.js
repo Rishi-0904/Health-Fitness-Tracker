@@ -23,6 +23,11 @@ const createMealSchema = z.object({
   notes: z.string().max(500).optional()
 });
 
+const updateMealSchema = createMealSchema.partial().refine(
+  (payload) => Object.keys(payload).length > 0,
+  { message: "At least one field must be provided" }
+);
+
 export const mealsRouter = Router();
 
 mealsRouter.use(requireAuth);
@@ -78,5 +83,67 @@ mealsRouter.post(
     });
 
     res.status(201).json({ meal });
+  })
+);
+
+mealsRouter.put(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const payload = updateMealSchema.parse(req.body);
+    const userId = req.user.id;
+
+    const existing = await prisma.mealLog.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Meal not found" });
+    }
+
+    const data = {};
+
+    if (payload.date !== undefined) {
+      const date = dayjs(payload.date);
+      if (!date.isValid()) {
+        return res.status(400).json({ message: "Invalid meal date" });
+      }
+      data.date = date.toDate();
+    }
+
+    if (payload.mealType !== undefined) data.mealType = payload.mealType;
+    if (payload.name !== undefined) data.name = payload.name;
+    if (payload.calories !== undefined) data.calories = payload.calories;
+    if (payload.proteinG !== undefined) data.proteinG = payload.proteinG;
+    if (payload.carbsG !== undefined) data.carbsG = payload.carbsG;
+    if (payload.fatG !== undefined) data.fatG = payload.fatG;
+    if (payload.notes !== undefined) data.notes = payload.notes;
+
+    const meal = await prisma.mealLog.update({
+      where: { id },
+      data
+    });
+
+    res.json({ meal });
+  })
+);
+
+mealsRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const existing = await prisma.mealLog.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Meal not found" });
+    }
+
+    await prisma.mealLog.delete({ where: { id } });
+
+    res.status(204).end();
   })
 );
