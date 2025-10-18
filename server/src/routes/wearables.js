@@ -16,6 +16,14 @@ const wearableQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20)
 });
 
+const updateSyncSchema = z.object({
+  status: z.enum(["processed", "pending", "failed"]).optional(),
+  errorMessage: z.string().nullable().optional(),
+  payload: z.record(z.any()).optional()
+}).refine((payload) => Object.keys(payload).length > 0, {
+  message: "At least one field must be provided"
+});
+
 export const wearableRouter = Router();
 
 wearableRouter.use(requireAuth);
@@ -59,6 +67,72 @@ wearableRouter.post(
     });
 
     res.status(201).json({ sync: record });
+  })
+);
+
+wearableRouter.patch(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const payload = updateSyncSchema.parse(req.body);
+    const userId = req.user.id;
+
+    const existing = await prisma.wearableSync.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Sync log not found" });
+    }
+
+    const data = {};
+
+    if (payload.status !== undefined) {
+      data.status = payload.status;
+      if (payload.status === "processed") {
+        data.errorMessage = null;
+      }
+    }
+
+    if (payload.errorMessage !== undefined) {
+      data.errorMessage = payload.errorMessage ?? null;
+    }
+
+    if (payload.payload !== undefined) {
+      data.payload = JSON.stringify(payload.payload);
+    }
+
+    const updated = await prisma.wearableSync.update({
+      where: { id },
+      data
+    });
+
+    res.json({
+      sync: {
+        ...updated,
+        payload: JSON.parse(updated.payload)
+      }
+    });
+  })
+);
+
+wearableRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const existing = await prisma.wearableSync.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Sync log not found" });
+    }
+
+    await prisma.wearableSync.delete({ where: { id } });
+
+    res.status(204).end();
   })
 );
 
